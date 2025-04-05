@@ -19,7 +19,11 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=[
+        "https://we-hire1-uyqy.vercel.app",  # Your frontend domain
+        "http://localhost:3000",  # For local development
+        "http://localhost:5173",  # For Vite local development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
