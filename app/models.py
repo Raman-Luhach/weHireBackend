@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, Date, Float, Enum
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, Date, Float, DateTime, Enum, func
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -35,7 +35,7 @@ class Job(Base):
     title = Column(String, index=True)
     description = Column(Text)
     requirements = Column(Text)
-    date_created = Column(Date, default=datetime.now().date)
+    date_created = Column(Date, nullable=False, server_default=func.current_date())
     end_date = Column(Date)
     assigned_to = Column(Integer, ForeignKey("users.id"), nullable=True)
     status = Column(String, default=JobStatus.DRAFT)
@@ -45,6 +45,12 @@ class Job(Base):
     
     # Relationship with the assigned hiring manager
     assigned_manager = relationship("User", back_populates="assigned_jobs")
+    
+    # Relationship with interview categories
+    interview_categories = relationship("InterviewCategory", back_populates="job")
+
+    # Relationship with candidates
+    candidates = relationship("Candidate", back_populates="job", cascade="all, delete-orphan")
 
 class InterviewCategory(Base):
     __tablename__ = "interview_categories"
@@ -53,9 +59,13 @@ class InterviewCategory(Base):
     name = Column(String, index=True)
     description = Column(Text)
     default_time = Column(Integer)  # in minutes
+    job_id = Column(Integer, ForeignKey("jobs.id"))
     
     # Relationship with interview questions
-    questions = relationship("InterviewQuestion", back_populates="category")
+    questions = relationship("InterviewQuestion", back_populates="category", cascade="all, delete-orphan")
+    
+    # Relationship with job
+    job = relationship("Job", back_populates="interview_categories")
 
 class InterviewQuestion(Base):
     __tablename__ = "interview_questions"
@@ -63,7 +73,36 @@ class InterviewQuestion(Base):
     id = Column(Integer, primary_key=True, index=True)
     text = Column(Text)
     status = Column(String, default="active")
+    must_ask = Column(Boolean, default=False)  # Indicates if this is a must-ask question
     category_id = Column(Integer, ForeignKey("interview_categories.id"))
+    job_id = Column(Integer, ForeignKey("jobs.id"))
     
     # Relationship with category
-    category = relationship("InterviewCategory", back_populates="questions") 
+    category = relationship("InterviewCategory", back_populates="questions")
+    
+    # Relationship with job
+    job = relationship("Job")
+
+class Candidate(Base):
+    __tablename__ = "candidates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    email = Column(String, unique=True, index=True)
+    phone = Column(String)
+    education = Column(Text)
+    experience = Column(Text)
+    applied_date = Column(Date, server_default=func.current_date())
+    status = Column(Integer, default=0)  # 0: Screening, 1: Interview, 2: Hired, 3: Rejected
+    resume_url = Column(String, nullable=True)
+    cover_letter = Column(Boolean, default=False)
+    skills = Column(Text)  # Store as comma-separated values
+    rating = Column(Float, default=0.0)
+    avatar_url = Column(String, nullable=True)
+    interview_scheduled = Column(Boolean, default=False)
+    interview_date = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+    job_id = Column(Integer, ForeignKey("jobs.id"))
+
+    # Relationship with job
+    job = relationship("Job", back_populates="candidates") 
